@@ -3,34 +3,23 @@ pipeline {
 
     stages {
 
-        stage('Récupérer le code depuis Git') {
+        stage('Fetch code') {
             steps {
-                echo "Cloning repository..."
-                git url: 'https://github.com/espritdridimohamed/Mohamed_Dridi_4Sleam1.git', branch: 'main'
+                git branch: 'main', url: 'https://github.com/espritdridimohamed/Mohamed_Dridi_4Sleam1.git'
             }
         }
 
-        stage('Test') {
+        stage('Run tests') {
             steps {
-                echo "Running Maven tests..."
-                sh 'mvn test'
+                sh './mvnw test -Dspring.profiles.active=jenkins'
             }
         }
 
-        stage('Livrable') {
+        stage('Build JAR') {
             steps {
-                echo "Building the deliverable (JAR)..."
-                sh 'mvn clean package'
+                sh './mvnw clean package -DskipTests -Dspring.profiles.active=jenkins'
+                archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
             }
-        }
-    }
-
-    post {
-        success {
-            echo "Pipeline finished successfully!"
-        }
-        failure {
-            echo "Pipeline failed!"
         }
     }
 }

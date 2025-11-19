@@ -10,6 +10,36 @@ pipeline {
             }
         }
 
+        stage('Diagnostics') {
+            steps {
+                script {
+                    echo "Agent isUnix: ${isUnix()}"
+                    if (isUnix()) {
+                        // Workspace listing and mvnw info
+                        sh 'pwd || true'
+                        sh 'ls -la || true'
+                        sh 'ls -la mvnw || true'
+                        sh 'file mvnw || true'
+                        sh 'stat -c "%a %n" mvnw || true'
+                        sh 'java -version || true'
+                        sh './mvnw -v || mvn -v || true'
+                        // Show the Jenkins test properties to confirm values
+                        sh 'echo "---- application-jenkins.properties ----" || true'
+                        sh 'cat src/test/resources/application-jenkins.properties || true'
+                        sh 'echo "---------------------------------------" || true'
+                    } else {
+                        // Windows diagnostics
+                        bat 'dir'
+                        bat 'echo %OS%'
+                        bat 'where mvnw || where mvnw.cmd || echo "mvnw not found"'
+                        bat 'java -version || echo "no java"'
+                        bat 'mvn -v || echo "mvn not found"'
+                        bat 'type src\\test\\resources\\application-jenkins.properties || echo "no properties file"'
+                    }
+                }
+            }
+        }
+
         stage('Set execute permission') {
             steps {
                 script {

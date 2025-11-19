@@ -5,26 +5,47 @@ pipeline {
 
         stage('Fetch code') {
             steps {
-                git branch: 'main', url: 'https://github.com/espritdridimohamed/Mohamed_Dridi_4Sleam1.git'
+                // Use the pipeline's SCM (safer for multibranch / credentials configured in Jenkins)
+                checkout scm
             }
         }
 
         stage('Set execute permission') {
             steps {
-                // Fixes the "Permission denied" for mvnw on Linux
-                sh 'chmod +x mvnw'
+                script {
+                    if (isUnix()) {
+                        // Persist executable bit in the git index (so future checkouts keep it) and set permission in workspace
+                        sh 'git update-index --chmod=+x mvnw || true'
+                        sh 'chmod +x mvnw'
+                    } else {
+                        // On Windows agents mvnw.cmd is used instead
+                        echo 'Windows agent detected, will use mvnw.cmd'
+                    }
+                }
             }
         }
 
         stage('Run tests') {
             steps {
-                sh './mvnw test -Dspring.profiles.active=jenkins'
+                script {
+                    if (isUnix()) {
+                        sh './mvnw test -Dspring.profiles.active=jenkins'
+                    } else {
+                        bat 'mvnw.cmd test -Dspring.profiles.active=jenkins'
+                    }
+                }
             }
         }
 
         stage('Build JAR') {
             steps {
-                sh './mvnw clean package -DskipTests -Dspring.profiles.active=jenkins'
+                script {
+                    if (isUnix()) {
+                        sh './mvnw clean package -DskipTests -Dspring.profiles.active=jenkins'
+                    } else {
+                        bat 'mvnw.cmd clean package -DskipTests -Dspring.profiles.active=jenkins'
+                    }
+                }
                 archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
             }
         }

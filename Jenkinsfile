@@ -23,16 +23,7 @@ pipeline {
         stage('Analyse SonarQube') {
             steps {
                 withSonarQubeEnv('sonarqube') {
-                    sh '''
-                        ./mvnw -B -ntp sonar:sonar \
-                          -Dsonar.projectKey=student-management \
-                          -Dsonar.projectName=student-management \
-                          -Dsonar.sources=src/main/java \
-                          -Dsonar.tests=src/test/java \
-                          -Dsonar.java.binaries=target/classes \
-                          -Dsonar.java.test.binaries=target/test-classes \
-                          -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
-                    '''
+                    sh './mvnw -B -ntp sonar:sonar -Dsonar.projectKey=student-management'
                 }
             }
         }

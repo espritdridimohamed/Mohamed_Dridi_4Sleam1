@@ -22,14 +22,10 @@ pipeline {
 
         stage('Analyse SonarQube') {
             steps {
-                script {
-                    def scannerHome = tool 'sonarqube'
-                    withSonarQubeEnv('sonarqube') {
-                        sh "${scannerHome}/bin/sonar-scanner"
-                    }
-                }
+                sh './mvnw sonar:sonar -Dsonar.projectKey=mohamed_dridi_4sleam1 -Dsonar.host.url=http://localhost:9000 -Dsonar.login=squ_33346f9b0d3991bd939adb876e14555ce9c94b76'
             }
         }
+
 
         stage('Quality Gate') {
             steps {

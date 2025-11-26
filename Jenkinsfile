@@ -16,16 +16,26 @@ pipeline {
         stage('Tests unitaires') {
             steps {
                 sh 'chmod +x mvnw'
-                sh './mvnw test'
+                sh './mvnw -B -ntp clean verify jacoco:report'
             }
         }
 
         stage('Analyse SonarQube') {
             steps {
-                sh './mvnw sonar:sonar -Dsonar.projectKey=mohamed_dridi_4sleam1 -Dsonar.host.url=http://localhost:9000 -Dsonar.login=squ_33346f9b0d3991bd939adb876e14555ce9c94b76'
+                withSonarQubeEnv('sonarqube') {
+                    sh '''
+                        ./mvnw -B -ntp sonar:sonar \
+                          -Dsonar.projectKey=student-management \
+                          -Dsonar.projectName=student-management \
+                          -Dsonar.sources=src/main/java \
+                          -Dsonar.tests=src/test/java \
+                          -Dsonar.java.binaries=target/classes \
+                          -Dsonar.java.test.binaries=target/test-classes \
+                          -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
+                    '''
+                }
             }
         }
-
 
         stage('Quality Gate') {
             steps {
@@ -37,7 +47,7 @@ pipeline {
 
         stage('Création du livrable') {
             steps {
-                sh './mvnw clean package -DskipTests'
+                sh './mvnw -B -ntp package -DskipTests'
             }
         }
 
@@ -65,13 +75,12 @@ pipeline {
     post {
         always {
             junit allowEmptyResults: true, testResults: '**/target/surefire-reports/*.xml'
-            jacoco execPattern: '**/target/jacoco.exec'
             archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
         }
         success {
             echo "✅ Build #${BUILD_NUMBER} successful!"
             echo "🐳 Docker image: ${DOCKER_IMAGE}:${BUILD_NUMBER}"
-            echo "📊 SonarQube: http://localhost:9000/dashboard?id=mohamed_dridi_4sleam1"
+            echo "📊 SonarQube: http://localhost:9000/dashboard?id=student-management"
         }
         failure {
             echo "❌ Build #${BUILD_NUMBER} failed!"

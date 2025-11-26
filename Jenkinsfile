@@ -16,14 +16,14 @@ pipeline {
         stage('Tests unitaires') {
             steps {
                 sh 'chmod +x mvnw'
-                sh './mvnw -B -ntp clean verify jacoco:report'
+                sh './mvnw clean test'
             }
         }
 
         stage('Analyse SonarQube') {
             steps {
                 withSonarQubeEnv('sonarqube') {
-                    sh './mvnw -B -ntp sonar:sonar -Dsonar.projectKey=student-management'
+                    sh './mvnw sonar:sonar -Dsonar.projectKey=student-management'
                 }
             }
         }
@@ -38,7 +38,7 @@ pipeline {
 
         stage('Création du livrable') {
             steps {
-                sh './mvnw -B -ntp package -DskipTests'
+                sh './mvnw package -DskipTests'
             }
         }
 

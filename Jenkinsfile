@@ -2,67 +2,65 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_HUB_REPO = 'mohameddridi/mohamed_dridi_4sleam1'
-        DOCKER_IMAGE_TAG = "${BUILD_NUMBER}"
+        DOCKERHUB_CREDENTIALS = 'dockerhub-credentials'
+        DOCKER_IMAGE = 'mohameddridi/mohamed_dridi_4sleam1'
     }
 
     stages {
-        stage('Checkout') {
+        stage('Récupération du code') {
             steps {
-                git branch: 'main',
-                    url: 'https://github.com/espritdridimohamed/Mohamed_Dridi_4Sleam1.git'
+                git branch: 'main', url: 'https://github.com/espritdridimohamed/Mohamed_Dridi_4Sleam1.git'
             }
         }
 
-        stage('Build & Test') {
+        stage('Tests unitaires') {
+            steps {
+                sh 'chmod +x mvnw'
+                sh './mvnw test'
+            }
+        }
+
+        stage('Analyse SonarQube') {
             steps {
                 script {
-                    if (isUnix()) {
-                        sh 'chmod +x mvnw'
-                        sh './mvnw clean install'
-                    } else {
-                        bat 'mvnw.cmd clean install'
+                    def scannerHome = tool 'SonarQubeScanner'
+                    withSonarQubeEnv('sonarqube') {
+                        sh "${scannerHome}/bin/sonar-scanner"
                     }
                 }
             }
         }
 
-        stage('Archive Artifact') {
+        stage('Quality Gate') {
             steps {
-                archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
+                timeout(time: 1, unit: 'HOURS') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+
+        stage('Création du livrable') {
+            steps {
+                sh './mvnw clean package -DskipTests'
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                script {
-                    if (isUnix()) {
-                        sh "docker build -t ${DOCKER_HUB_REPO}:${DOCKER_IMAGE_TAG} ."
-                        sh "docker tag ${DOCKER_HUB_REPO}:${DOCKER_IMAGE_TAG} ${DOCKER_HUB_REPO}:latest"
-                    } else {
-                        bat "docker build -t ${DOCKER_HUB_REPO}:${DOCKER_IMAGE_TAG} ."
-                        bat "docker tag ${DOCKER_HUB_REPO}:${DOCKER_IMAGE_TAG} ${DOCKER_HUB_REPO}:latest"
-                    }
-                }
+                sh "docker build -t ${DOCKER_IMAGE}:${BUILD_NUMBER} -t ${DOCKER_IMAGE}:latest ."
             }
         }
 
-        stage('Push to Docker Hub') {   
+        stage('Push Docker Image') {
             steps {
-                script {
-                    withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', 
-                                                       usernameVariable: 'DOCKER_USER', 
-                                                       passwordVariable: 'DOCKER_PASS')]) {
-                        if (isUnix()) {
-                            sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
-                            sh "docker push ${DOCKER_HUB_REPO}:${DOCKER_IMAGE_TAG}"
-                            sh "docker push ${DOCKER_HUB_REPO}:latest"
-                        } else {
-                            bat 'echo %DOCKER_PASS% | docker login -u %DOCKER_USER% --password-stdin'
-                            bat "docker push ${DOCKER_HUB_REPO}:${DOCKER_IMAGE_TAG}"
-                            bat "docker push ${DOCKER_HUB_REPO}:latest"
-                        }
-                    }
+                withCredentials([usernamePassword(
+                    credentialsId: "${DOCKERHUB_CREDENTIALS}", 
+                    usernameVariable: 'USER', 
+                    passwordVariable: 'PASS'
+                )]) {
+                    sh 'echo $PASS | docker login -u $USER --password-stdin'
+                    sh "docker push ${DOCKER_IMAGE}:${BUILD_NUMBER}"
+                    sh "docker push ${DOCKER_IMAGE}:latest"
                 }
             }
         }
@@ -71,9 +69,16 @@ pipeline {
     post {
         always {
             junit allowEmptyResults: true, testResults: '**/target/surefire-reports/*.xml'
+            jacoco execPattern: '**/target/jacoco.exec'
+            archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
         }
         success {
-            echo "Docker image pushed successfully: ${DOCKER_HUB_REPO}:${DOCKER_IMAGE_TAG}"
+            echo "✅ Build #${BUILD_NUMBER} successful!"
+            echo "🐳 Docker image: ${DOCKER_IMAGE}:${BUILD_NUMBER}"
+            echo "📊 SonarQube: http://localhost:9000/dashboard?id=mohamed_dridi_4sleam1"
+        }
+        failure {
+            echo "❌ Build #${BUILD_NUMBER} failed!"
         }
     }
 }

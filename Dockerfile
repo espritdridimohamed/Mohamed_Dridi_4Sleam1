@@ -29,10 +29,12 @@ FROM eclipse-temurin:17-jre-jammy
 WORKDIR /app
 
 # On copie le fichier .jar depuis l'étape de construction (AS build)
-COPY --from=build /app/target/student-management-0.0.1-SNAPSHOT.jar app.jar
+COPY --from=build /app/target/*.jar app.jar
+
+
 
 # On expose le port sur lequel l'application écoute (vu dans application.properties)
 EXPOSE 8089
 
 # La commande à exécuter pour lancer l'application
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75.0", "-jar", "app.jar"]
